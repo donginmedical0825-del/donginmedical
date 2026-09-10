@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="동인메디컬 쿠팡 상품 모델명 생성 도구">
+  <title>동인메디컬 | 상품 모델명 생성</title>
+  <style>
+    :root {
+      --bg: #f4f8fc;
+      --ink: #11233f;
+      --muted: #71839d;
+      --line: #dbe6f2;
+      --primary: #2468de;
+      --primary-dark: #1557c8;
+      --mint: #35baac;
+      --danger: #e84f61;
+      --shadow: 0 20px 60px rgba(40, 76, 120, .09);
+      --sans: Pretendard, "Noto Sans KR", "Malgun Gothic", Arial, sans-serif;
+      --mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { min-width: 320px; background: var(--bg); }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 32% 7%, rgba(51, 141, 255, .10), transparent 25%),
+        radial-gradient(circle at 72% 10%, rgba(43, 199, 182, .08), transparent 22%),
+        var(--bg);
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+
+    .topbar {
+      height: 64px;
+      border-bottom: 1px solid rgba(219, 230, 242, .9);
+      background: rgba(255, 255, 255, .88);
+      backdrop-filter: blur(16px);
+    }
+
+    .topbar-inner {
+      width: min(1400px, calc(100% - 48px));
+      height: 100%;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      color: white;
+      background: linear-gradient(145deg, #2f7af1, #1b59c9);
+      box-shadow: 0 8px 22px rgba(25, 99, 235, .22);
+    }
+    .brand-mark svg { width: 21px; height: 21px; }
+    .brand-en { margin: 0; font-size: 15px; font-weight: 900; letter-spacing: .08em; }
+    .brand-ko { margin: 5px 0 0; color: #7b8aa3; font-size: 12px; font-weight: 700; letter-spacing: .18em; }
+    .tool-badge {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 13px;
+      border: 1px solid #d8e5f5;
+      border-radius: 999px;
+      color: #64748b;
+      background: #f8fbff;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .tool-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 4px rgba(53, 186, 172, .11); }
+
+    .viewport {
+      min-height: calc(100vh - 64px);
+      display: grid;
+      place-items: center;
+      padding: 18px 24px;
+    }
+    .layout {
+      width: min(1400px, 100%);
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 270px;
+      gap: 16px;
+      align-items: stretch;
+    }
+    .panel, .side-panel { border-radius: 22px; box-shadow: var(--shadow); }
+    .panel { overflow: hidden; border: 1px solid var(--line); background: white; }
+    .panel-head {
+      min-height: 76px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 14px 24px;
+      border-bottom: 1px solid #e6eef7;
+    }
+    .title-wrap { display: flex; align-items: center; gap: 12px; }
+    .step {
+      width: 36px;
+      height: 36px;
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      color: var(--primary);
+      background: #edf5ff;
+      font-size: 13px;
+      font-weight: 900;
+    }
+    h1 { margin: 0; color: #10213d; font-size: 21px; line-height: 1.15; letter-spacing: -.035em; }
+    .subtitle { margin: 5px 0 0; color: #7a8ba5; font-size: 13px; }
+    .required-note { display: flex; align-items: center; gap: 8px; color: #71829b; font-size: 13px; font-weight: 650; white-space: nowrap; }
+    .required-note i { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
+
+    .panel-body { padding: 17px 24px 18px; }
+    .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .field-label { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; color: #1c2d48; font-size: 14px; font-weight: 800; }
+    .field-label em { color: var(--danger); font-size: 12px; font-style: normal; }
+    .field-label .optional { color: #91a0b5; font-weight: 600; }
+    input[type="text"] {
+      width: 100%;
+      height: 45px;
+      padding: 0 15px;
+      outline: none;
+      border: 1px solid #cbd9eb;
+      border-radius: 12px;
+      color: #162943;
+      background: #fbfdff;
+      font-size: 15px;
+      font-weight: 650;
+      transition: border-color .18s, box-shadow .18s, background .18s;
+    }
+    input[type="text"]:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 4px rgba(36, 104, 222, .11); }
+
+    .candidates-box { margin-top: 16px; padding: 15px; border: 1px solid #d8e5f4; border-radius: 18px; background: #f7faff; }
+    .candidate-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+    .candidate-title-line { display: flex; align-items: center; gap: 8px; }
+    h2 { margin: 0; color: #142641; font-size: 16px; font-weight: 900; }
+    .count-badge { padding: 4px 8px; border-radius: 999px; color: #118979; background: #e4f8f4; font-size: 11px; font-weight: 850; }
+    .candidate-help { margin: 5px 0 0; color: #7a8aa2; font-size: 12px; }
+    .reroll {
+      height: 37px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 0 13px;
+      border: 1px solid #cbd9eb;
+      border-radius: 12px;
+      color: #38516f;
+      background: white;
+      box-shadow: 0 2px 6px rgba(31, 65, 106, .05);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .reroll:hover { border-color: #9fbee5; background: #fbfdff; }
+    .reroll svg { width: 15px; height: 15px; }
+    .candidate-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .candidate {
+      min-height: 70px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 15px;
+      border: 1px solid #d8e2ef;
+      border-radius: 14px;
+      background: white;
+      cursor: pointer;
+      transition: border-color .18s, background .18s, box-shadow .18s, transform .18s;
+    }
+    .candidate:hover { border-color: #aac7ee; background: #fbfdff; transform: translateY(-1px); }
+    .candidate.active { border-color: var(--primary); background: #edf5ff; box-shadow: 0 5px 16px rgba(37, 99, 235, .10); }
+    .candidate input { position: absolute; opacity: 0; pointer-events: none; }
+    .radio { width: 18px; height: 18px; flex: 0 0 auto; display: grid; place-items: center; border: 1.5px solid #9dacbf; border-radius: 50%; background: white; }
+    .active .radio { border-color: var(--primary); }
+    .active .radio::after { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--primary); }
+    .candidate-copy { min-width: 0; flex: 1; }
+    .candidate-top { display: flex; align-items: center; gap: 8px; }
+    .candidate-code { color: #12366b; font-family: var(--mono); font-size: 17px; font-weight: 900; letter-spacing: .02em; }
+    .recommend { display: inline-flex; align-items: center; gap: 4px; padding: 4px 7px; border-radius: 999px; color: white; background: var(--primary); font-size: 10px; font-weight: 850; }
+    .candidate-detail { display: block; margin-top: 5px; overflow: hidden; color: #7b8ba3; font-size: 12px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+    .check { width: 18px; color: var(--primary); font-weight: 900; opacity: 0; }
+    .active .check { opacity: 1; }
+
+    .result {
+      min-height: 72px;
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 12px 18px;
+      border: 1px solid #cfe0f2;
+      border-radius: 16px;
+      background: linear-gradient(100deg, #f6fbff 0%, #edf7ff 55%, #f3fbfa 100%);
+    }
+    .result-label { margin: 0; color: #6c809a; font-size: 12px; font-weight: 800; }
+    .result-code { min-height: 31px; margin: 4px 0 0; color: #0f3973; font-family: var(--mono); font-size: 25px; font-weight: 950; letter-spacing: .035em; }
+    .result-action { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+    .save-button {
+      height: 44px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 19px;
+      border: 0;
+      border-radius: 12px;
+      color: white;
+      background: var(--primary);
+      box-shadow: 0 8px 20px rgba(37, 99, 235, .20);
+      font-size: 14px;
+      font-weight: 850;
+    }
+    .save-button:hover { background: var(--primary-dark); }
+    .save-button svg { width: 17px; height: 17px; }
+    .error { min-height: 15px; margin: 0; color: #df4656; font-size: 12px; font-weight: 750; text-align: right; }
+
+    .side-panel {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 21px;
+      overflow: hidden;
+      color: white;
+      background: linear-gradient(165deg, #123d77 0%, #0f315f 68%, #123653 100%);
+      box-shadow: 0 20px 55px rgba(15, 49, 95, .16);
+    }
+    .spark-box { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.15); border-radius: 12px; background: rgba(255,255,255,.10); color: #7ce1d4; font-size: 20px; }
+    .eyebrow { margin: 20px 0 0; color: #8ed9d0; font-size: 11px; font-weight: 850; letter-spacing: .15em; }
+    .side-title { margin: 8px 0 0; font-size: 22px; line-height: 1.3; letter-spacing: -.03em; }
+    .side-copy { margin: 12px 0 0; color: #bfd0e5; font-size: 13px; line-height: 1.75; }
+    .features { display: grid; gap: 9px; margin-top: 24px; }
+    .feature { display: flex; align-items: center; gap: 11px; padding: 9px 10px; border: 1px solid rgba(255,255,255,.10); border-radius: 12px; background: rgba(255,255,255,.06); color: #dce8f5; font-size: 12px; font-weight: 750; }
+    .feature b { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 8px; color: #7ce1d4; background: rgba(57, 187, 174, .15); font-size: 10px; }
+    .storage { margin: 17px 2px 0; color: #9eb4cf; font-size: 11px; line-height: 1.55; }
+    .storage strong { color: #d8e7f5; }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: 999px;
+      color: white;
+      background: #102c55;
+      box-shadow: 0 12px 35px rgba(15, 44, 85, .25);
+      font-size: 13px;
+      font-weight: 800;
+      transform: translate(-50%, 90px);
+      opacity: 0;
+      transition: transform .24s ease, opacity .24s ease;
+      pointer-events: none;
+    }
+    .toast.show { transform: translate(-50%, 0); opacity: 1; }
+    .toast b { color: #7ce1d4; }
+
+    @media (max-width: 980px) {
+      .viewport { place-items: start center; }
+      .layout { grid-template-columns: 1fr; }
+      .side-panel { display: none; }
+    }
+    @media (max-width: 680px) {
+      .topbar-inner { width: calc(100% - 32px); }
+      .tool-badge, .required-note { display: none; }
+      .viewport { padding: 14px 12px 28px; }
+      .panel { border-radius: 18px; }
+      .panel-head { padding: 14px 16px; }
+      .panel-body { padding: 15px 14px; }
+      .input-grid, .candidate-grid { grid-template-columns: 1fr; }
+      .candidate-head { align-items: flex-end; }
+      .candidate-help { max-width: 210px; }
+      .result { align-items: flex-start; flex-direction: column; }
+      .result-action, .save-button { width: 100%; }
+      .save-button { justify-content: center; }
+      .error { text-align: left; }
+    }
+    @media (max-height: 760px) and (min-width: 981px) {
+      .topbar { height: 56px; }
+      .viewport { min-height: calc(100vh - 56px); padding-top: 10px; padding-bottom: 10px; }
+      .panel-head { min-height: 68px; }
+      .panel-body { padding-top: 13px; padding-bottom: 13px; }
+      .candidate { min-height: 64px; }
+    }
+    .supplier-field { border: 0; margin: 0 0 20px; padding: 0; min-width: 0; }
+    .supplier-buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .supplier-button { padding: 12px 8px; border: 1px solid #cbd9eb; border-radius: 12px; color: #38516f; background: #fbfdff; font-weight: 800; }
+    .supplier-button[aria-pressed="true"] { color: var(--primary); border-color: var(--primary); background: #edf5ff; box-shadow: 0 0 0 2px rgba(36,104,222,.12); }
+    button:focus-visible, .candidate:focus-within { outline: 3px solid var(--mint); outline-offset: 3px; }
+    .form-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 16px; }
+    .empty { grid-column: 1 / -1; padding: 25px 12px; text-align: center; color: var(--muted); font-size: 13px; }
+    .history-panel { grid-column: 1 / -1; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 14px 16px; text-align: left; border-bottom: 1px solid #e6eef7; overflow-wrap: anywhere; }
+    th { white-space: nowrap; background: #f7faff; color: #64748b; }
+    td.model { font-family: var(--mono); font-weight: 800; color: #12366b; }
+    .row-actions { display: flex; gap: 6px; }
+    .row-actions button { white-space: nowrap; padding: 0 10px; }
+    .danger { color: #ca3548; }
+    .candidate-code, .result-code { overflow-wrap: anywhere; }
+    .candidate-top { flex-wrap: wrap; }
+    .toast { max-width: calc(100% - 24px); width: max-content; }
+    @media (max-width: 680px) { .supplier-buttons { grid-template-columns: repeat(2, 1fr); } table { min-width: 760px; } .form-actions .save-button { width: auto; } }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.5-1.5 3-3.3 3-5.5A4.5 4.5 0 0 0 17.5 4c-1.5 0-2.6.4-3.5 1.5C13.1 4.4 12 4 10.5 4A4.5 4.5 0 0 0 6 8.5c0 2.2 1.5 4 3 5.5l5 5Z"/><path d="M3 12h4l2-3 2 6 2-3h4"/></svg>
+        </div>
+        <div><p class="brand-en">DONGIN MEDICAL</p><p class="brand-ko">동인메디컬</p></div>
+      </div>
+      <div class="tool-badge">모델명 생성 도구</div>
+    </div>
+  </header>
+
+  <main class="viewport">
+    <div class="layout">
+      <section class="panel" aria-labelledby="page-title">
+        <div class="panel-head">
+          <div class="title-wrap">
+            <span class="step">01</span>
+            <div><h1 id="page-title">상품 모델명 만들기</h1><p class="subtitle">상품 정보를 입력하고 사용할 모델명을 선택하세요.</p></div>
+          </div>
+          <div class="required-note"><i></i>공급처와 제품명은 필수입니다.</div>
+        </div>
+
+        <div class="panel-body">
+          <fieldset class="supplier-field">
+  <legend class="field-label">상품 공급처 <em>필수</em></legend>
+  <div id="supplierButtons" class="supplier-buttons" role="group" aria-label="상품 공급처 선택 (필수)">
+    <button type="button" class="supplier-button" data-supplier="동인" aria-pressed="false">동인</button>
+    <button type="button" class="supplier-button" data-supplier="대성웰라이프" aria-pressed="false">대성웰라이프</button>
+    <button type="button" class="supplier-button" data-supplier="이로움" aria-pressed="false">이로움</button>
+    <button type="button" class="supplier-button" data-supplier="가가온" aria-pressed="false">가가온</button>
+  </div>
+</fieldset>
+<div class="input-grid">
+            <label>
+              <span class="field-label">제품명 <em>필수</em></span>
+              <input id="productName" type="text" placeholder="제품명을 입력하세요" autocomplete="off" autocapitalize="off" spellcheck="false" aria-required="true">
+            </label>
+            <label>
+              <span class="field-label">구성/옵션 <em class="optional">선택</em></span>
+              <input id="optionText" type="text" placeholder="예: M / 블랙" autocomplete="off" spellcheck="false">
+            </label>
+          </div>
+
+          <div class="form-actions"><button id="generateButton" class="save-button" type="button">모델명 생성</button><button id="newProductButton" class="reroll" type="button">새 제품 등록</button></div><section class="candidates-box" aria-labelledby="candidate-title">
+            <div class="candidate-head">
+              <div>
+                <div class="candidate-title-line"><h2 id="candidate-title">모델명 선택</h2><span class="count-badge">6개 추천</span></div>
+                <p class="candidate-help">상품과 옵션에 맞는 짧은 모델명 후보입니다.</p>
+              </div>
+              <button id="rerollButton" class="reroll" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 1-15.2 6.5L3 16"/><path d="M3 21v-5h5"/><path d="M3 12A9 9 0 0 1 18.2 5.5L21 8"/><path d="M21 3v5h-5"/></svg>
+                후보 다시 만들기
+              </button>
+            </div>
+            <div id="candidateGrid" class="candidate-grid" role="radiogroup" aria-label="모델명 후보"></div>
+          </section>
+
+          <div class="result">
+            <div><p class="result-label">선택한 모델명</p><p id="selectedModel" class="result-code">—</p></div>
+            <div class="result-action">
+              <button id="saveButton" class="save-button" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                <span id="saveButtonText">저장하고 복사</span>
+              </button>
+              <p id="errorMessage" class="error" role="alert"></p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="side-panel">
+        <div>
+          <div class="spark-box" aria-hidden="true">✦</div>
+          <p class="eyebrow">SMART CODE</p>
+          <h2 class="side-title">짧고 일관된<br>모델명 관리</h2>
+          <p class="side-copy">상품군과 옵션을 반영한 모델명을 빠르게 선택할 수 있습니다.</p>
+        </div>
+        <div>
+          <div class="features">
+            <div class="feature"><b>01</b><span>상품 연관 코드</span></div>
+            <div class="feature"><b>02</b><span>공급처별 Prefix</span></div>
+            <div class="feature"><b>03</b><span>중복 없는 번호</span></div>
+          </div>
+          <p class="storage"><strong id="savedCount">이 브라우저 저장 0개</strong><br>저장 기록은 현재 브라우저에서만 유지됩니다.</p>
+        </div>
+      </aside>
+      <section class="panel history-panel" aria-labelledby="history-title">
+        <div class="panel-head"><div><h2 id="history-title">등록 내역</h2><p class="subtitle">최근 등록한 모델명부터 표시됩니다.</p></div><button id="clearAllButton" type="button" class="reroll danger">전체 삭제</button></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">순서</th><th scope="col">공급처</th><th scope="col">제품명</th><th scope="col">구성/옵션</th><th scope="col">모델명</th><th scope="col">등록일</th><th scope="col">관리</th></tr></thead><tbody id="historyBody"></tbody></table></div>
+      </section>
+    </div>
+  </main>
+
+  <output id="toast" class="toast" aria-live="polite"><b>✓</b><span>모델명이 저장되고 복사되었습니다.</span></output>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const STORAGE_KEY = 'donginMedicalModelRecordsV1';
+      const PRODUCT_CODE_RULES = [
+        { keywords: ['손목보호대', '손목 보호대'], code: 'WP', alternatives: ['WR'] },
+        { keywords: ['손목밴드', '손목 밴드'], code: 'WB' },
+        { keywords: ['무릎보호대', '무릎 보호대'], code: 'KP', alternatives: ['KN'] },
+        { keywords: ['발목보호대', '발목 보호대'], code: 'AP', alternatives: ['AN'] },
+        { keywords: ['팔꿈치보호대', '팔꿈치 보호대'], code: 'EP', alternatives: ['EL'] },
+        { keywords: ['허리보호대', '허리 보호대'], code: 'LP' },
+        { keywords: ['목보호대', '목 보호대'], code: 'NP' },
+        { keywords: ['압박스타킹', '압박 스타킹'], code: 'CS' },
+        { keywords: ['의료용장갑', '의료용 장갑', '장갑'], code: 'GL' },
+        { keywords: ['마스크'], code: 'MS' }, { keywords: ['붕대'], code: 'BD' },
+        { keywords: ['거즈'], code: 'GZ' }, { keywords: ['체온계'], code: 'TM' },
+        { keywords: ['혈압계'], code: 'BP' }, { keywords: ['목발'], code: 'CR' },
+        { keywords: ['휠체어'], code: 'WC' }, { keywords: ['보행기'], code: 'WK' },
+        { keywords: ['주사기'], code: 'SY' }, { keywords: ['소독솜', '알코올솜'], code: 'SW' },
+        { keywords: ['면봉'], code: 'CT' }, { keywords: ['반창고', '밴드'], code: 'BN' },
+        { keywords: ['테이프'], code: 'TP' }, { keywords: ['핫팩'], code: 'HP' },
+        { keywords: ['찜질팩'], code: 'PC' }, { keywords: ['파스'], code: 'PA' },
+        { keywords: ['핀셋'], code: 'TW' }, { keywords: ['의료가위', '의료 가위'], code: 'SC' },
+        { keywords: ['기저귀'], code: 'DP' }
+      ];
+      const CHOSEONG = ['G', 'K', 'N', 'D', 'T', 'R', 'M', 'B', 'P', 'S', 'S', '', 'J', 'J', 'C', 'K', 'T', 'P', 'H'];
+      const VOWELS = ['A', 'A', 'Y', 'Y', 'E', 'E', 'Y', 'Y', 'O', 'W', 'W', 'O', 'Y', 'U', 'W', 'W', 'U', 'Y', 'I', 'I', 'I'];
+      const COLOR_PATTERN = /블랙|검정|화이트|흰색|레드|빨강|블루|파랑|그린|초록|옐로|노랑|핑크|보라|퍼플|그레이|회색|베이지|브라운|갈색|네이비|오렌지/gi;
+
+      const elements = {
+        productName: document.getElementById('productName'),
+        optionText: document.getElementById('optionText'),
+        candidateGrid: document.getElementById('candidateGrid'),
+        rerollButton: document.getElementById('rerollButton'),
+        selectedModel: document.getElementById('selectedModel'),
+        saveButton: document.getElementById('saveButton'),
+        saveButtonText: document.getElementById('saveButtonText'),
+        errorMessage: document.getElementById('errorMessage'),
+        savedCount: document.getElementById('savedCount'),
+        toast: document.getElementById('toast')
+      };
+
+      const SUPPLIERS = { '동인': 'D', '대성웰라이프': 'DS', '이로움': 'ER', '가가온': 'GG' };
+      let supplier = '';
+      let candidates = [];
+      let selected = '';
+      let excluded = [];
+      let candidateSource = null;
+      let lastSaved = '';
+      let toastTimer = 0;
+
+      function readRecords() {
+        try {
+          const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+          return Array.isArray(value) ? value.filter(item => item && typeof item.modelName === 'string') : [];
+        } catch (_) {
+          return [];
+        }
+      }
+
+      function writeRecords(records) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+        updateSavedCount(records); renderHistory(records);
+      }
+
+      function updateSavedCount(records = readRecords()) {
+        elements.savedCount.textContent = `이 브라우저 저장 ${records.length}개`;
+      }
+
+      function hangulInitial(char) {
+        const code = char.charCodeAt(0) - 0xac00;
+        if (code < 0 || code > 11171) return '';
+        const choseongIndex = Math.floor(code / 588);
+        const vowelIndex = Math.floor((code % 588) / 28);
+        return CHOSEONG[choseongIndex] || VOWELS[vowelIndex] || '';
+      }
+
+      function fallbackCode(productName) {
+        const asciiMatches = productName.toUpperCase().match(/[A-Z]+/g);
+        const ascii = asciiMatches ? asciiMatches.join('') : '';
+        if (ascii.length >= 2) return ascii.slice(0, 3);
+        const initials = Array.from(productName).map(hangulInitial).filter(Boolean).join('');
+        return (initials || 'PR').slice(0, 3).padEnd(2, 'R');
+      }
+
+      function resolveProductCodes(productName) {
+        const compact = productName.replace(/\s+/g, '').toLowerCase();
+        const rule = PRODUCT_CODE_RULES.find(item => item.keywords.some(keyword => compact.includes(keyword.replace(/\s+/g, '').toLowerCase())));
+        return rule ? [rule.code].concat(rule.alternatives || []) : [fallbackCode(productName)];
+      }
+
+      function resolveOptionCode(optionText) {
+        const cleaned = optionText.replace(COLOR_PATTERN, ' ').toUpperCase();
+        const size = cleaned.match(/(?:^|[\s/,(])((?:XXL|XL|XS|L|M|S|FREE|F))(?:$|[\s/),])/);
+        if (size) return size[1] === 'FREE' ? 'F' : size[1];
+        if (/대형|대사이즈|라지/.test(optionText)) return 'L';
+        if (/중형|중사이즈|미디움/.test(optionText)) return 'M';
+        if (/소형|소사이즈|스몰/.test(optionText)) return 'S';
+        const dimension = cleaned.match(/(\d{1,3})\s*(CM|MM|INCH|인치|호)/i);
+        if (dimension) return dimension[1];
+        const count = cleaned.match(/(\d{1,2})\s*(개|매|EA|P|세트)/i);
+        if (count) return count[1] + (/세트/i.test(count[2]) ? 'S' : 'P');
+        return '';
+      }
+
+      function nextAvailable(stem, hasOption, unavailable) {
+        for (let serial = 1; serial <= 999; serial += 1) {
+          const suffix = String(serial).padStart(2, '0');
+          const modelName = hasOption ? stem + suffix : stem + '-' + suffix;
+          if (!unavailable.has(modelName)) {
+            unavailable.add(modelName);
+            return modelName;
+          }
+        }
+        throw new Error('사용 가능한 일련번호가 없습니다.');
+      }
+
+      function generateCandidates(productName, optionText, unavailableNames) {
+        const codes = resolveProductCodes(productName);
+        const optionCode = resolveOptionCode(optionText);
+        const unavailable = new Set(unavailableNames.map(name => name.toUpperCase()));
+        const stems = codes.map(code => `${SUPPLIERS[supplier]}${code}${optionCode ? '-' + optionCode : ''}`);
+        const result = [];
+        while (result.length < 6) {
+          const stem = stems[result.length < 3 ? 0 : result.length % stems.length];
+          const id = nextAvailable(stem, Boolean(optionCode), unavailable);
+          result.push({
+            id,
+            productCode: stem.slice(SUPPLIERS[supplier].length).split('-')[0],
+            detail: [productName.trim(), optionCode].filter(Boolean).join(' · '),
+            recommended: result.length === 0
+          });
+        }
+        return result;
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]);
+      }
+
+      function renderCandidates() {
+        elements.candidateGrid.innerHTML = candidates.map(candidate => {
+          const active = candidate.id === selected;
+          return `<label class="candidate${active ? ' active' : ''}" data-model="${escapeHtml(candidate.id)}">
+            <input type="radio" name="modelCandidate" value="${escapeHtml(candidate.id)}"${active ? ' checked' : ''}>
+            <span class="radio" aria-hidden="true"></span>
+            <span class="candidate-copy">
+              <span class="candidate-top"><strong class="candidate-code">${escapeHtml(candidate.id)}</strong>${candidate.recommended ? '<span class="recommend">✦ 추천</span>' : ''}</span>
+              <span class="candidate-detail">${escapeHtml(candidate.detail)}</span>
+            </span>
+            <span class="check" aria-hidden="true">✓</span>
+          </label>`;
+        }).join('') || '<p class="empty">공급처와 제품명을 입력하고 모델명을 생성하세요.</p>';
+        elements.rerollButton.disabled = !candidates.length;
+        elements.selectedModel.textContent = selected || '—';
+        elements.saveButton.disabled = !selected;
+      }
+
+      function setError(message) {
+        elements.errorMessage.textContent = message || '';
+      }
+
+      function makeCandidates(useCurrentExclusions) {
+        const productName = elements.productName.value.trim();
+        const optionText = elements.optionText.value.trim();
+        if (!supplier) { setError('상품 공급처를 선택해주세요.'); document.querySelector('[data-supplier]').focus(); return; }
+        if (!productName) {
+          setError('제품명은 필수 항목입니다.');
+          elements.productName.focus();
+          return;
+        }
+        const savedNames = readRecords().map(item => item.modelName);
+        const unavailable = savedNames.concat(useCurrentExclusions ? excluded : []);
+        try {
+          candidates = generateCandidates(productName, optionText, unavailable);
+          selected = candidates[0] ? candidates[0].id : '';
+          excluded = Array.from(new Set(excluded.concat(candidates.map(item => item.id)))).slice(-60);
+          candidateSource = { supplier, productName, optionText };
+          lastSaved = '';
+          elements.saveButtonText.textContent = '저장하고 복사';
+          setError('');
+          renderCandidates();
+        } catch (error) {
+          setError(error instanceof Error ? error.message : '후보를 만들지 못했습니다.');
+        }
+      }
+
+      async function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+          try {
+            await navigator.clipboard.writeText(text);
+            return true;
+          } catch (_) {}
+        }
+        const area = document.createElement('textarea');
+        area.value = text;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.left = '-9999px';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        area.setSelectionRange(0, area.value.length);
+        let copied = false;
+        try { copied = document.execCommand('copy'); } catch (_) { copied = false; }
+        area.remove();
+        return copied;
+      }
+
+      function showToast(message) {
+        elements.toast.querySelector('span').textContent = message;
+        elements.toast.classList.add('show');
+        window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(() => elements.toast.classList.remove('show'), 2200);
+      }
+
+      async function saveAndCopy() {
+        const candidate = candidates.find(item => item.id === selected);
+        if (!candidate || !candidateSource) return;
+        if (candidateSource.supplier !== supplier || candidateSource.productName !== elements.productName.value.trim() || candidateSource.optionText !== elements.optionText.value.trim()) {
+          setError('입력 내용이 변경되었습니다. 후보를 다시 만들어 주세요.');
+          return;
+        }
+
+        const records = readRecords();
+        if (records.some(item => item.modelName.toUpperCase() === candidate.id.toUpperCase()) && lastSaved !== candidate.id) {
+          setError('이미 등록된 모델명입니다. 후보를 다시 만들어 주세요.');
+          return;
+        }
+        if (!records.some(item => item.modelName.toUpperCase() === candidate.id.toUpperCase())) {
+          records.push({
+            supplier: candidateSource.supplier,
+            productName: candidateSource.productName,
+            optionText: candidateSource.optionText,
+            productCode: candidate.productCode,
+            modelName: candidate.id,
+            createdAt: new Date().toISOString()
+          });
+          try {
+            writeRecords(records);
+          } catch (_) {
+            setError('브라우저 저장 공간을 사용할 수 없습니다.');
+            return;
+          }
+        }
+
+        const copied = await copyText(candidate.id);
+        lastSaved = candidate.id;
+        elements.saveButtonText.textContent = '모델명 다시 복사';
+        setError('');
+        showToast(copied ? '모델명이 저장되고 복사되었습니다.' : `저장 완료: ${candidate.id}`);
+      }
+
+      elements.candidateGrid.addEventListener('change', event => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement) || target.name !== 'modelCandidate') return;
+        selected = target.value;
+        lastSaved = '';
+        elements.saveButtonText.textContent = '저장하고 복사';
+        setError('');
+        renderCandidates();
+      });
+      elements.rerollButton.addEventListener('click', () => makeCandidates(true));
+      elements.saveButton.addEventListener('click', saveAndCopy);
+      [elements.productName, elements.optionText].forEach(input => {
+        input.addEventListener('input', invalidateCandidates);
+        input.addEventListener('keydown', event => {
+          if (event.key === 'Enter') makeCandidates(false);
+        });
+      });
+
+      function invalidateCandidates() {
+        candidates = []; selected = ''; excluded = []; candidateSource = null; lastSaved = '';
+        elements.saveButtonText.textContent = '저장하고 복사';
+        setError(''); renderCandidates();
+      }
+
+      function resetProduct(focus = false) {
+        supplier = '';
+        document.querySelectorAll('[data-supplier]').forEach(button => button.setAttribute('aria-pressed', 'false'));
+        elements.productName.value = ''; elements.optionText.value = '';
+        invalidateCandidates();
+        elements.toast.classList.remove('show');
+        if (focus) elements.productName.focus();
+      }
+
+      function legacySupplier(record) {
+        if (typeof record.supplier === 'string' && record.supplier) return record.supplier;
+        const prefix = record.modelName.toUpperCase();
+        if (prefix.startsWith('D')) return '동인';
+        return '—';
+      }
+
+      function renderHistory(records = readRecords()) {
+        const rows = records.map((record, index) => ({ record, index })).sort((a, b) =>
+          (Date.parse(b.record.createdAt) || 0) - (Date.parse(a.record.createdAt) || 0) || b.index - a.index);
+        document.getElementById('historyBody').innerHTML = rows.map(({record, index}, position) => {
+          const date = new Date(record.createdAt);
+          const formatted = Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('ko-KR', {year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+          return `<tr><td>${rows.length - position}</td><td>${escapeHtml(legacySupplier(record))}</td><td>${escapeHtml(record.productName || '—')}</td><td>${escapeHtml(record.optionText || '—')}</td><td class="model">${escapeHtml(record.modelName)}</td><td>${escapeHtml(formatted)}</td><td><div class="row-actions"><button type="button" class="reroll" data-action="copy" data-index="${index}">복사</button><button type="button" class="reroll danger" data-action="delete" data-index="${index}">삭제</button></div></td></tr>`;
+        }).join('') || '<tr><td colspan="7" class="empty">아직 등록된 모델명이 없습니다.</td></tr>';
+        document.getElementById('clearAllButton').disabled = !records.length;
+        updateSavedCount(records);
+      }
+
+      document.getElementById('supplierButtons').addEventListener('click', event => {
+        const button = event.target.closest('[data-supplier]');
+        if (!button) return;
+        supplier = button.dataset.supplier;
+        document.querySelectorAll('[data-supplier]').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+        invalidateCandidates();
+      });
+      document.getElementById('generateButton').addEventListener('click', () => makeCandidates(false));
+      document.getElementById('newProductButton').addEventListener('click', () => resetProduct(true));
+      document.getElementById('historyBody').addEventListener('click', async event => {
+        const button = event.target.closest('[data-action]');
+        if (!button) return;
+        const records = readRecords();
+        const index = Number(button.dataset.index);
+        if (!records[index]) { renderHistory(); return; }
+        if (button.dataset.action === 'copy') {
+          const copied = await copyText(records[index].modelName);
+          showToast(copied ? '모델명이 복사되었습니다.' : '복사하지 못했습니다. 모델명을 직접 선택해 복사해주세요.');
+        } else {
+          records.splice(index, 1);
+          try { writeRecords(records); showToast('등록 내역이 삭제되었습니다.'); }
+          catch (_) { showToast('브라우저 저장 공간을 사용할 수 없습니다.'); }
+        }
+      });
+      document.getElementById('clearAllButton').addEventListener('click', () => {
+        if (!window.confirm('등록된 모델명 전체를 삭제하시겠습니까?')) return;
+        try { writeRecords([]); showToast('등록 내역이 모두 삭제되었습니다.'); }
+        catch (_) { showToast('브라우저 저장 공간을 사용할 수 없습니다.'); }
+      });
+      window.addEventListener('storage', event => { if (event.key === STORAGE_KEY || event.key === null) renderHistory(); });
+      window.addEventListener('pageshow', () => { resetProduct(); renderHistory(); });
+      resetProduct();
+      renderHistory();
+    })();
+  </script>
+</body>
+</html>
