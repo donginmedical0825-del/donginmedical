@@ -348,7 +348,7 @@
   <legend class="field-label">상품 공급처 <em>필수</em></legend>
   <div id="supplierButtons" class="supplier-buttons" role="group" aria-label="상품 공급처 선택 (필수)">
     <button type="button" class="supplier-button" data-supplier="동인" aria-pressed="false">동인</button>
-    <button type="button" class="supplier-button" data-supplier="대성웰라이프" aria-pressed="false">대성웰라이프</button>
+    <button type="button" class="supplier-button" data-supplier="대상" aria-pressed="false">대상</button>
     <button type="button" class="supplier-button" data-supplier="이로움" aria-pressed="false">이로움</button>
     <button type="button" class="supplier-button" data-supplier="가가온" aria-pressed="false">가가온</button>
   </div>
@@ -422,6 +422,7 @@
 
       const STORAGE_KEY = 'donginMedicalModelRecordsV1';
       const PRODUCT_CODE_RULES = [
+        { keywords: ['나이키보호대', '나이키 보호대'], code: 'NKE' },
         { keywords: ['손목보호대', '손목 보호대'], code: 'WP', alternatives: ['WR'] },
         { keywords: ['손목밴드', '손목 밴드'], code: 'WB' },
         { keywords: ['무릎보호대', '무릎 보호대'], code: 'KP', alternatives: ['KN'] },
@@ -459,7 +460,7 @@
         toast: document.getElementById('toast')
       };
 
-      const SUPPLIERS = { '동인': 'D', '대성웰라이프': 'DS', '이로움': 'ER', '가가온': 'GG' };
+      const SUPPLIERS = { '동인': 'D', '대상': 'DS', '이로움': 'ER', '가가온': 'GG' };
       let supplier = '';
       let candidates = [];
       let selected = '';
@@ -471,7 +472,20 @@
       function readRecords() {
         try {
           const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-          return Array.isArray(value) ? value.filter(item => item && typeof item.modelName === 'string') : [];
+          if (!Array.isArray(value)) return [];
+          let migrated = false;
+          const normalized = value.map(item => {
+            if (item && item.supplier === '대성웰라이프') {
+              migrated = true;
+              return { ...item, supplier: '대상' };
+            }
+            return item;
+          });
+          // 공급처 이름만 변경하고 기존 모델명과 나머지 필드는 보존합니다.
+          if (migrated) {
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized)); } catch (_) {}
+          }
+          return normalized.filter(item => item && typeof item.modelName === 'string');
         } catch (_) {
           return [];
         }
@@ -517,7 +531,9 @@
         if (/소형|소사이즈|스몰/.test(optionText)) return 'S';
         const dimension = cleaned.match(/(\d{1,3})\s*(CM|MM|INCH|인치|호)/i);
         if (dimension) return dimension[1];
-        const count = cleaned.match(/(\d{1,2})\s*(개|매|EA|P|세트)/i);
+        const volume = cleaned.match(/(\d+)\s*(ML|밀리리터)(?![A-Z])/i);
+        if (volume) return volume[1] + 'ML';
+        const count = cleaned.match(/(\d+)\s*(개|매|EA|P|세트)/i);
         if (count) return count[1] + (/세트/i.test(count[2]) ? 'S' : 'P');
         return '';
       }
